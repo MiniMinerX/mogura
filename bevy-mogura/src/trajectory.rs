@@ -54,7 +54,7 @@ fn update_trajectory(
                 | DrawingMethod::Stick => {
                     for child in childlen.iter() {
                         if let Ok((mut transform, atom_id)) =
-                            current_visualized_atoms.get_mut(*child)
+                            current_visualized_atoms.get_mut(child)
                         {
                             let position = frame.positions()[atom_id.id()];
                             transform.translation =
@@ -62,7 +62,7 @@ fn update_trajectory(
                         }
 
                         if let Ok((mut transform, bond_id)) =
-                            current_visualized_bonds.get_mut(*child)
+                            current_visualized_bonds.get_mut(child)
                         {
                             let position1 = frame.positions()[bond_id.atomid1()];
                             let position2 = frame.positions()[bond_id.atomid2()];
@@ -115,7 +115,7 @@ fn update_trajectory(
 
                     for child in childlen.iter() {
                         if let Ok((mut transform, interpolation_id)) =
-                            current_visualized_tubes.get_mut(*child)
+                            current_visualized_tubes.get_mut(child)
                         {
                             let start_id = interpolation_id.start_id();
                             let end_id = interpolation_id.end_id();

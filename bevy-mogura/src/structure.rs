@@ -1,16 +1,10 @@
 use crate::*;
 // use bevy::prelude::*;
 use bevy::{
-    pbr::{MaterialPipeline, MaterialPipelineKey},
-    reflect::TypePath,
-    render::{
-        mesh::{MeshVertexBufferLayoutRef, PrimitiveTopology},
-        render_asset::RenderAssetUsages,
-        render_resource::{
-            AsBindGroup, PolygonMode, RenderPipelineDescriptor, ShaderRef,
+    asset::RenderAssetUsages, mesh::{MeshVertexBufferLayoutRef, PrimitiveTopology}, pbr::{MaterialPipeline, MaterialPipelineKey}, reflect::TypePath, render::render_resource::{
+            AsBindGroup, PolygonMode, RenderPipelineDescriptor,
             SpecializedMeshPipelineError,
-        },
-    },
+        }, shader::ShaderRef
 };
 use itertools::Itertools;
 
@@ -164,7 +158,7 @@ fn update_structure(
 ) {
     if mogura_state.structure_data.is_none() {
         for (entity, _structure_params) in current_visualized_structure.iter() {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
         }
         return;
     }
@@ -193,7 +187,7 @@ fn update_structure(
 
         for (entity, mut structure_params) in current_visualized_structure.iter_mut() {
             if delete_index.contains(&structure_params.id) {
-                commands.entity(entity).despawn_recursive();
+                commands.entity(entity).despawn();
             } else {
                 structure_params.id = old2new_index[&structure_params.id];
             }
@@ -208,7 +202,7 @@ fn update_structure(
 
         for (entity, structure_params) in current_visualized_structure.iter() {
             if structure_params.id == selection_id {
-                commands.entity(entity).despawn_recursive();
+                commands.entity(entity).despawn();
             }
         }
 
@@ -225,8 +219,9 @@ fn update_structure(
                 if mogura_state.init_look_at {
                     let center = structure_data.center();
                     let center_vec = Vec3::new(center[0], center[1], center[2]);
-                    let mut trackball_camera = trackball_camera.single_mut();
-                    trackball_camera.frame.set_target(center_vec.into());
+                    if let Ok(mut trackball_camera) = trackball_camera.single_mut() {
+                        trackball_camera.frame.set_target(center_vec.into());
+                    }
                 }
 
                 (atoms, bonds, residues)
@@ -779,7 +774,7 @@ pub struct LineMaterial {
     color: LinearRgba,
 }
 
-pub const SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(12345678912345678912);
+pub const SHADER_HANDLE: Handle<Shader> = bevy::asset::uuid_handle!("12345678-1234-1234-1234-123456789012");
 
 impl Material for LineMaterial {
     fn fragment_shader() -> ShaderRef {
@@ -787,7 +782,7 @@ impl Material for LineMaterial {
     }
 
     fn specialize(
-        _pipeline: &MaterialPipeline<Self>,
+        _pipeline: &MaterialPipeline,
         descriptor: &mut RenderPipelineDescriptor,
         _layout: &MeshVertexBufferLayoutRef,
         _key: MaterialPipelineKey<Self>,

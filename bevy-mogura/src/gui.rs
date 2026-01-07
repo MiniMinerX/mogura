@@ -7,14 +7,9 @@ pub struct MoguraGuiPlugins;
 impl Plugin for MoguraGuiPlugins {
     fn build(&self, app: &mut App) {
         app.init_resource::<OccupiedScreenSpace>()
-            .add_plugins(bevy_egui::EguiPlugin)
-            .add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
-            .add_systems(
-                PreUpdate,
-                (absorb_egui_inputs)
-                    .after(bevy_egui::systems::process_input_system)
-                    .before(bevy_egui::EguiSet::BeginPass),
-            )
+            .add_plugins(bevy_egui::EguiPlugin::default())
+            .add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin::default())
+            .add_systems(PreUpdate, absorb_egui_inputs)
             .add_systems(Update, poll_rfd_structure)
             .add_systems(Update, poll_rfd_trajectory)
             .add_systems(Update, poll_downloadpdb)
@@ -48,7 +43,7 @@ fn poll_rfd_trajectory(
         if let Some(result) = bevy::tasks::futures_lite::future::block_on(
             bevy::tasks::futures_lite::future::poll_once(&mut selected_file.0),
         ) {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
 
             let path = if let Some(result) = result {
                 result
@@ -98,7 +93,7 @@ fn poll_rfd_structure(
         if let Some(result) = bevy::tasks::futures_lite::future::block_on(
             bevy::tasks::futures_lite::future::poll_once(&mut selected_file.0),
         ) {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
 
             #[allow(unused_variables)]
             let (path, content) = if let Some(result) = result {
@@ -163,7 +158,7 @@ fn poll_downloadpdb(
         if let Some(result) = bevy::tasks::futures_lite::future::block_on(
             bevy::tasks::futures_lite::future::poll_once(&mut downloadded_pdb.0),
         ) {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
 
             if let Ok(structure_data) = result {
                 if mogura_selections.0.is_empty() {
@@ -198,7 +193,9 @@ fn update_gui(
     mut open_help_window: Local<bool>,
     diagnostics: Res<bevy::diagnostic::DiagnosticsStore>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let task_pool = bevy::tasks::AsyncComputeTaskPool::get();
 
     occupied_screen_space.left = egui::SidePanel::left("left")
@@ -325,8 +322,9 @@ fn update_gui(
                     if let Some(structure_data) = &mogura_state.structure_data {
                         let center = structure_data.center();
                         let center_vec = Vec3::new(center[0], center[1], center[2]);
-                        let mut trackball_camera = trackball_camera.single_mut();
-                        trackball_camera.frame.set_target(center_vec.into());
+                        if let Ok(mut trackball_camera) = trackball_camera.single_mut() {
+                            trackball_camera.frame.set_target(center_vec.into());
+                        }
                         mogura_state
                             .logs
                             .push("Look at center of structure".to_string());
@@ -577,10 +575,12 @@ fn update_gui(
 fn absorb_egui_inputs(
     mut contexts: bevy_egui::EguiContexts,
     mut mouse: ResMut<ButtonInput<MouseButton>>,
-    mut mouse_wheel: ResMut<Events<bevy::input::mouse::MouseWheel>>,
+    mut mouse_wheel: ResMut<Messages<bevy::input::mouse::MouseWheel>>,
     mut keyboard: ResMut<ButtonInput<KeyCode>>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     if !(ctx.wants_pointer_input() || ctx.is_pointer_over_area()) {
         return;
     }
